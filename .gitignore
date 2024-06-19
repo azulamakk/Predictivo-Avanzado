@@ -4,3 +4,7 @@
 *.png
 *.json
 *.html
+*.pkl
+*.dat
+*.bak
+*.dir

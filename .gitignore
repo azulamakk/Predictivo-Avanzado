@@ -3,7 +3,6 @@
 *.jpg
 *.png
 *.json
-*.html
 *.pkl
 *.dat
 *.bak

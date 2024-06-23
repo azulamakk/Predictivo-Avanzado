@@ -1,0 +1,109 @@
+import pandas as pd
+import streamlit as st
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Cargar datos de usuarios y locales
+df_users = pd.read_csv('./datos/dataUser.csv', sep=';')
+df_places = pd.read_csv('./datos/dataLocal.csv', sep=';')
+
+# Preprocesamiento de datos de usuarios y locales
+# Preprocesamiento de datos de usuarios
+categorical_features_users = ['smoker', 'drink_level', 'dress_preference', 'ambience', 'transport',
+                              'marital_status', 'hijos', 'interest', 'personality', 'religion', 'activity']
+numerical_features_users = ['birth_year']
+
+preprocessor_users = ColumnTransformer(
+    transformers=[
+        ('num', StandardScaler(), numerical_features_users),
+        ('cat', OneHotEncoder(), categorical_features_users)])
+
+pipeline_users = Pipeline(steps=[('preprocessor', preprocessor_users)])
+
+# Ajustar y transformar los datos de usuarios
+users_preprocessed = pipeline_users.fit_transform(df_users)
+
+# Preprocesamiento de datos de locales
+categorical_features_places = ['alcohol', 'smoking_area', 'dress_code', 'accessibility', 'price', 'Rambience', 'franchise', 'area', 'other_services']
+numerical_features_places = ['latitude', 'longitude']
+
+preprocessor_places = ColumnTransformer(
+    transformers=[
+        ('num', StandardScaler(), numerical_features_places),
+        ('cat', OneHotEncoder(), categorical_features_places)])
+
+pipeline_places = Pipeline(steps=[('preprocessor', preprocessor_places)])
+
+# Ajustar y transformar los datos de locales
+locales_preprocessed = pipeline_places.fit_transform(df_places)
+
+# Calcular la matriz de similitud entre locales
+similarity_matrix = cosine_similarity(locales_preprocessed, locales_preprocessed)
+
+# Función para recomendar locales basados en similitud
+def recommend_locales_based_on_similarity(local_input, n=3):
+    try:
+        local_index = df_places.loc[df_places['name'] == local_input].index[0]
+    except IndexError:
+        return "Local no encontrado. Asegúrate de que el nombre sea correcto."
+
+    similarity_scores = list(enumerate(similarity_matrix[local_index]))
+    similarity_scores_sorted = sorted(similarity_scores, key=lambda x: x[1], reverse=True)
+    similar_local_indices = [i[0] for i in similarity_scores_sorted[1:n+1]]
+
+    return df_places.iloc[similar_local_indices]
+
+# Interfaz de usuario con Streamlit
+def main():
+    st.title('Sistema de Recomendación de Locales')
+
+    option = st.radio('¿Ya tienes un usuario registrado o deseas registrarte?', ('Ingresar userID existente', 'Registrarse como nuevo usuario'))
+
+    if option == 'Ingresar userID existente':
+        userID = st.text_input('Ingresa tu userID:')
+        if userID:
+            st.write(f"Recomendaciones para el usuario con userID '{userID}':")
+            # Aquí deberías agregar la lógica para recomendar locales al usuario basado en su userID
+            st.write("Placeholder para mostrar recomendaciones")
+
+    elif option == 'Registrarse como nuevo usuario':
+        st.write('Completa tus datos para registrarte:')
+        smoker = st.selectbox('Selecciona si fumas:', ['false', 'true', '?'])
+        drink_level = st.selectbox('Selecciona tu nivel de consumo de bebidas:', ['abstemious', 'social drinker', 'casual drinker'])
+        dress_preference = st.selectbox('Selecciona tu preferencia de vestimenta:', ['informal', 'formal', 'no preference', '?', 'elegant'])
+        ambience = st.selectbox('Selecciona tu preferencia de ambiente:', ['family', 'friends', 'solitary', '?'])
+        transport = st.selectbox('Selecciona tu medio de transporte habitual:', ['on foot', 'public', 'car owner', '?'])
+        marital_status = st.selectbox('Selecciona tu estado civil:', ['single', 'married', 'widow', '?'])
+        hijos = st.selectbox('Selecciona tu situación con respecto a hijos:', ['independent', 'kids', '?', 'dependent'])
+        birth_year = st.number_input('Ingresa tu año de nacimiento:', min_value=1900, max_value=2024)
+        interest = st.selectbox('Selecciona tus intereses:', ['variety', 'technology', 'none', 'retro', 'eco-friendly'])
+        personality = st.selectbox('Selecciona tu tipo de personalidad:', ['thrifty-protector', 'hunter-ostentatious', 'hard-worker', 'conformist'])
+        religion = st.selectbox('Selecciona tu religión:', ['none', 'Catholic', 'Christian', 'Mormon', 'Jewish'])
+        activity = st.selectbox('Selecciona tu tipo de actividad:', ['student', 'professional', '?', 'unemployed', 'working-class'])
+
+        if st.button('Registrarme'):
+            # Aquí deberías guardar los datos del nuevo usuario y luego recomendar locales
+            st.write("Registrando usuario y mostrando recomendaciones...")
+
+            # Supongamos que aquí se guardarían los datos del nuevo usuario en df_users y se recomendarían locales
+            # Pero este paso específico depende de cómo estás manejando tus datos en backend
+
+    # Mostrar recomendaciones de locales
+    st.header('Top 3 Locales Recomendados:')
+    # Aquí podrías mostrar los top 3 locales recomendados
+    # Por ejemplo, si quieres recomendar el primer local de la lista
+    if len(df_places) > 0:
+        recommended_places = recommend_locales_based_on_similarity(df_places.iloc[0]['name'], n=3)
+        for idx, place in recommended_places.iterrows():
+            st.write(f"Nombre: {place['name']}")
+            st.write(f"Dirección: {place['address']}")
+            st.write(f"Ciudad: {place['city']}")
+            st.write(f"Rating: {place['rating']}")
+            st.write(f"Food Rating: {place['food_rating']}")
+            st.write(f"Service Rating: {place['service_rating']}")
+            st.write("--------")
+
+if __name__ == "__main__":
+    main()

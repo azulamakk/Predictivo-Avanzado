@@ -5,10 +5,10 @@ from surprise.model_selection import train_test_split
 
 # Cargar datos
 df_ratings = pd.read_csv('./datos/rating_final.csv')
-df_places = pd.read_csv('./datos/geoplaces2.csv')
+df_places = pd.read_csv('./datos/dataLocales.csv')
 
 # Configurar Surprise
-reader = Reader(rating_scale=(1, 5))
+reader = Reader(rating_scale=(0, 2))
 data = Dataset.load_from_df(df_ratings[['userID', 'placeID', 'rating']], reader)
 
 # Dividir datos para entrenamiento y prueba
@@ -22,6 +22,9 @@ algo.fit(trainset)
 
 # Función para recomendar lugares para un userID dado
 def recommend_places(userID, algo, df_places, top_n=10):
+    if userID not in df_ratings['userID'].unique():
+        raise ValueError('El userID no está registrado')
+    
     # Lista para almacenar recomendaciones
     recommendations = []
     
@@ -62,8 +65,11 @@ userID = st.text_input('Ingrese su userID (por ejemplo, U1077):')
 # Botón de recomendación
 if st.button('Obtener Recomendaciones'):
     if userID:
-        # Mostrar recomendaciones
-        recommendations = recommend_places(userID, algo, df_places)
-        st.write(pd.DataFrame(recommendations))
+        try:
+            # Mostrar recomendaciones
+            recommendations = recommend_places(userID, algo, df_places)
+            st.write(pd.DataFrame(recommendations))
+        except ValueError as e:
+            st.error(str(e))
     else:
         st.warning('Por favor ingrese un userID.')

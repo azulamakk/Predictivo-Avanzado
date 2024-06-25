@@ -24,26 +24,19 @@ algo = KNNBasic(k=20, sim_options={'name': 'msd', 'user_based': False})
 # Entrenar el modelo
 algo.fit(trainset)
 
-# Función para recomendar lugares para un userID dado
 def recommend_places(user_id, algo, df_places, top_n=10):
     recommendations = []
 
-    # Obtener todos los IDs de lugar disponibles
     place_ids = df_places['placeID'].unique()
 
-    # Predecir calificaciones para todos los lugares
     for place_id in place_ids:
-        # Predecir la calificación para este lugar
         prediction = algo.predict(user_id, place_id)
         recommendations.append((place_id, prediction.est))
 
-    # Ordenar recomendaciones por calificación estimada
     recommendations.sort(key=lambda x: x[1], reverse=True)
 
-    # Obtener las mejores recomendaciones
     top_recommendations = recommendations[:top_n]
 
-    # Preparar detalles de las mejores recomendaciones
     top_recommendations_details = []
     for place_id, rating in top_recommendations:
         place_info = df_places[df_places['placeID'] == place_id].iloc[0]
@@ -55,13 +48,11 @@ def recommend_places(user_id, algo, df_places, top_n=10):
 
     return top_recommendations_details
 
-
 # Ruta para ingresar datos de usuario y obtener recomendaciones
 @app.route('/recommend', methods=['POST'])
 def recommend():
     user_data = request.json
 
-    # Generar un userID único para el nuevo usuario (U20 + 2 dígitos aleatorios)
     user_id = f"U20{uuid.uuid4().hex[:2].upper()}"
 
     global df_users  # Definir df_users como global para poder modificarlo dentro de la función
@@ -73,14 +64,22 @@ def recommend():
     df_users.to_csv('./datos/dataUser.csv', index=False)
 
     # Obtener recomendaciones para el nuevo usuario
-    recommendations = recommend_places(user_id, algo, df_places, df_ratings)
+    recommendations = recommend_places(user_id, algo, df_places)
 
-    return jsonify(recommendations)
+    # Preparar datos para mostrar en la interfaz gráfica
+    top_recommendations_details = []
+    for rec in recommendations:
+        top_recommendations_details.append({
+            'Nombre': rec['Nombre'],
+            'Dirección': rec['Dirección'],
+            'Calificación Estimada': rec['Calificación Estimada']
+        })
 
-# Ruta para la página de ingreso de datos
+    return jsonify(top_recommendations_details)
+
+
 @app.route('/')
 def index():
-    # Valores únicos para dropdowns
     unique_budget = ['medium', 'low', '?', 'high']
     unique_interest = ['variety', 'technology', 'none', 'retro', 'eco-friendly']
     unique_personality = ['thrifty-protector', 'hunter-ostentatious', 'hard-worker', 'conformist']

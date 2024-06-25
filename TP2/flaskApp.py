@@ -6,75 +6,56 @@ import uuid
 
 app = Flask(__name__)
 
-# Cargar datos
-df_ratings = pd.read_csv('./datos/rating_final.csv')
-df_places = pd.read_csv('./datos/dataLocal.csv')
-df_users = pd.read_csv('./datos/dataUser.csv')
+df_ratings = pd.read_csv('./datos/rating_final.csv', sep=',')
+df_places = pd.read_csv('./datos/dataLocal.csv', sep=';')
+df_users = pd.read_csv('./datos/dataUser.csv', sep=';')
 
-# Configurar Surprise
 reader = Reader(rating_scale=(0, 2))
 data = Dataset.load_from_df(df_ratings[['userID', 'placeID', 'rating']], reader)
 
-# Dividir datos para entrenamiento y prueba
 trainset, testset = train_test_split(data, test_size=0.2, random_state=42)
 
-# Configurar algoritmo KNN con MSD
 algo = KNNBasic(k=20, sim_options={'name': 'msd', 'user_based': False})
 
-# Entrenar el modelo
 algo.fit(trainset)
 
-# Función para recomendar lugares para un userID dado
 def recommend_places(user_id, algo, df_places, top_n=10):
     recommendations = []
 
-    # Obtener todos los IDs de lugar disponibles
     place_ids = df_places['placeID'].unique()
 
-    # Predecir calificaciones para todos los lugares
     for place_id in place_ids:
-        # Predecir la calificación para este lugar
         prediction = algo.predict(user_id, place_id)
         recommendations.append((place_id, prediction.est))
 
-    # Ordenar recomendaciones por calificación estimada
     recommendations.sort(key=lambda x: x[1], reverse=True)
 
-    # Obtener las mejores recomendaciones
     top_recommendations = recommendations[:top_n]
 
-    # Preparar detalles de las mejores recomendaciones
     top_recommendations_details = []
     for place_id, rating in top_recommendations:
         place_info = df_places[df_places['placeID'] == place_id].iloc[0]
         top_recommendations_details.append({
-            'Nombre': place_info['nombre'],  # Asegurar que el nombre de la columna sea correcto
-            'Dirección': place_info['direccion'],  # Asegurar que el nombre de la columna sea correcto
+            'Nombre': place_info['name'],  
+            'Dirección': place_info['address'],  
             'Calificación Estimada': rating
         })
 
     return top_recommendations_details
 
-# Ruta para ingresar datos de usuario y obtener recomendaciones
 @app.route('/recommend', methods=['POST'])
 def recommend():
     user_data = request.json
 
-    # Generar un userID único para el nuevo usuario (U20 + 2 dígitos aleatorios)
     user_id = f"U20{uuid.uuid4().hex[:2].upper()}"
 
-    global df_users  # Definir df_users como global para poder modificarlo dentro de la función
-
-    # Agregar nuevo usuario a df_users
+    global df_users  
     new_user = pd.DataFrame([{'userID': user_id, 'latitude': None, 'longitude': None, **user_data}])
     df_users = pd.concat([df_users, new_user], ignore_index=True)
-    # Guardar en CSV (opcional, si desea persistir los datos de nuevos usuarios)
     df_users.to_csv('./datos/dataUser.csv', index=False)
 
-    # Obtener recomendaciones para el nuevo usuario
     recommendations = recommend_places(user_id, algo, df_places)
 
-    # Preparar datos para mostrar en la interfaz gráfica
     top_recommendations_details = []
     for rec in recommendations:
         top_recommendations_details.append({
@@ -85,10 +66,8 @@ def recommend():
 
     return jsonify(top_recommendations_details)
 
-# Ruta para la página de ingreso de datos
 @app.route('/')
 def index():
-    # Valores únicos para dropdowns
     unique_budget = ['medium', 'low', '?', 'high']
     unique_interest = ['variety', 'technology', 'none', 'retro', 'eco-friendly']
     unique_personality = ['thrifty-protector', 'hunter-ostentatious', 'hard-worker', 'conformist']

@@ -48,13 +48,12 @@ def recommend_places(user_id, algo, df_places, top_n=10):
     for place_id, rating in top_recommendations:
         place_info = df_places[df_places['placeID'] == place_id].iloc[0]
         top_recommendations_details.append({
-            'Nombre': place_info['name'],
-            'Dirección': place_info['address'],
+            'Nombre': place_info['nombre'],  # Asegurar que el nombre de la columna sea correcto
+            'Dirección': place_info['direccion'],  # Asegurar que el nombre de la columna sea correcto
             'Calificación Estimada': rating
         })
 
     return top_recommendations_details
-
 
 # Ruta para ingresar datos de usuario y obtener recomendaciones
 @app.route('/recommend', methods=['POST'])
@@ -73,9 +72,18 @@ def recommend():
     df_users.to_csv('./datos/dataUser.csv', index=False)
 
     # Obtener recomendaciones para el nuevo usuario
-    recommendations = recommend_places(user_id, algo, df_places, df_ratings)
+    recommendations = recommend_places(user_id, algo, df_places)
 
-    return jsonify(recommendations)
+    # Preparar datos para mostrar en la interfaz gráfica
+    top_recommendations_details = []
+    for rec in recommendations:
+        top_recommendations_details.append({
+            'Nombre': rec['Nombre'],
+            'Dirección': rec['Dirección'],
+            'Calificación Estimada': rec['Calificación Estimada']
+        })
+
+    return jsonify(top_recommendations_details)
 
 # Ruta para la página de ingreso de datos
 @app.route('/')

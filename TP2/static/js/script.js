@@ -15,7 +15,7 @@ function getRecommendations() {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify(data)
+        body: data
     })
     .then(response => response.json())
     .then(recommendations => {
